@@ -20,6 +20,9 @@ struct chunk_header {
 	chunk_flag_t prev_free_flag;
 };
 
+/*Global Variable*/
+chunk_ptr_t start_sbrk = NULL;
+
 extern void *hw_malloc(size_t bytes);
 extern int hw_free(void *mem);
 extern void *get_start_sbrk(void);
