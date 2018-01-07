@@ -5,6 +5,13 @@
 #include <inttypes.h>
 #include <unistd.h>
 
+typedef long long int64;
+typedef int64 chunk_ptr_t;
+typedef int64 chunk_ptr_t;
+typedef int64 chunk_size_t;
+typedef int64 chunk_size_t;
+typedef int64 chunk_flag_t;
+
 struct chunk_header {
 	chunk_ptr_t prev;
 	chunk_ptr_t next;

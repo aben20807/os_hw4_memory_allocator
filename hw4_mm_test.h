@@ -3,6 +3,6 @@
 
 #include <stdio.h>
 
-#include "hw_malloc.h"
+#include "lib/hw_malloc.h"
 
 #endif
