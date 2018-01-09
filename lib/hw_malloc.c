@@ -2,12 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+bool has_init = false;
+chunk_ptr_t start_sbrk = NULL;
+
 void *hw_malloc(size_t bytes)
 {
-	if ((void *)start_sbrk == NULL) {
+	if (!has_init) {
 		start_sbrk = (chunk_ptr_t)sbrk(64 * 1024);
+		printf("sbrk: %p\n", start_sbrk);
+		has_init = true;
 	}
-	printf("%p\n", (void *)start_sbrk);
 	void *ptr = sbrk(0);
 	printf("%p\n", ptr);
 	return NULL;

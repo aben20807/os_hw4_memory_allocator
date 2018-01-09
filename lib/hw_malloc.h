@@ -4,13 +4,13 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <stdbool.h>
 
-typedef long long int64;
-typedef int64 chunk_ptr_t;
-typedef int64 chunk_ptr_t;
-typedef int64 chunk_size_t;
-typedef int64 chunk_size_t;
-typedef int64 chunk_flag_t;
+typedef void *chunk_ptr_t;
+typedef void *chunk_ptr_t;
+typedef void *chunk_size_t;
+typedef void *chunk_size_t;
+typedef void *chunk_flag_t;
 
 struct chunk_header {
 	chunk_ptr_t prev;
@@ -21,7 +21,8 @@ struct chunk_header {
 };
 
 /*Global Variable*/
-chunk_ptr_t start_sbrk = NULL;
+extern chunk_ptr_t start_sbrk;
+extern bool has_init;
 
 extern void *hw_malloc(size_t bytes);
 extern int hw_free(void *mem);
