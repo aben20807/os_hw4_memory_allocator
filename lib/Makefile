@@ -1,6 +1,6 @@
 TARGETS = hw_malloc.o
 CC ?= gcc
-CFLAGS += -std=gnu99 -Wall
+CFLAGS += -std=gnu99 -Wall # -g3
 OBJS = $(TARGETS)
 
 all: $(TARGETS)

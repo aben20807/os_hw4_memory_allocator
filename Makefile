@@ -1,7 +1,7 @@
 EXEC = hw4_mm_test
 TARGETS = $(EXEC)
 CC ?= gcc
-CFLAGS += -std=gnu99 -I./lib -Wall
+CFLAGS += -std=gnu99 -I./lib -Wall # -g3
 OBJS = hw4_mm_test.o ./lib/hw_malloc.o
 SUBDIR = ./lib
 

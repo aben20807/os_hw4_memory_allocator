@@ -7,10 +7,8 @@
 #include <stdbool.h>
 
 typedef void *chunk_ptr_t;
-typedef void *chunk_ptr_t;
-typedef void *chunk_size_t;
-typedef void *chunk_size_t;
-typedef void *chunk_flag_t;
+typedef long long chunk_size_t;
+typedef long long chunk_flag_t;
 
 struct chunk_header {
 	chunk_ptr_t prev;
@@ -20,9 +18,15 @@ struct chunk_header {
 	chunk_flag_t prev_free_flag;
 };
 
+struct bin_t {
+	chunk_ptr_t prev;
+	chunk_ptr_t next;
+};
+
 /*Global Variable*/
 extern chunk_ptr_t start_sbrk;
 extern bool has_init;
+extern struct bin_t bin[7];
 
 extern void *hw_malloc(size_t bytes);
 extern int hw_free(void *mem);
