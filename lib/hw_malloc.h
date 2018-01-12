@@ -19,16 +19,17 @@ struct chunk_header {
 	chunk_flag_t prev_free_flag;
 };
 
-struct bin_t {
+typedef struct bin_t {
 	chunk_ptr_t prev;
 	chunk_ptr_t next;
-};
+	int size;
+} bin_t;
 
 /*Global Variable*/
 extern void *start_sbrk;
 extern void *heap_brk;
 extern bool has_init;
-extern struct bin_t bin[7];
+extern bin_t bin[7];
 
 extern void *hw_malloc(size_t bytes);
 extern int hw_free(void *mem);
@@ -36,7 +37,7 @@ extern void *get_start_sbrk(void);
 
 static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header *ori, const chunk_size_t need);
-static void en_bin(const int bin_num, chunk_header *c);
-static struct chunk_header de_bin();
+static void en_bin(const int bin_num, chunk_header *c_h);
+static chunk_header *de_bin();
 
 #endif

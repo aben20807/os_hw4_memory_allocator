@@ -5,7 +5,7 @@
 bool has_init = false;
 void *start_brk = NULL;
 void *heap_brk = NULL;
-struct bin_t bin[7] = {};
+bin_t bin[7] = {};
 
 void *hw_malloc(size_t bytes)
 {
@@ -15,6 +15,7 @@ void *hw_malloc(size_t bytes)
 		for (int i = 0; i < 7; i++) {
 			bin[i].prev = &bin[i];
 			bin[i].next = &bin[i];
+			bin[i].size = 0;
 		}
 		start_brk = sbrk(64 * 1024);
 		heap_brk = start_brk;
@@ -22,8 +23,11 @@ void *hw_malloc(size_t bytes)
 		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		if (64 * 1024 - chunk_size > 8) {
 			chunk_header *c = split(s, chunk_size);
-			printf("%lld\n", c->chunk_size);
-			printf("%p, size: %lli\n", start_brk, s->chunk_size);
+			printf("bin size: %d\n", bin[0].size);
+			en_bin(0, c);
+			printf("bin size: %d\n", bin[0].size);
+			// printf("%lld\n", c->chunk_size);
+			// printf("%p, size: %lli\n", start_brk, s->chunk_size);
 		} else {
 		}
 	} else {
@@ -64,12 +68,36 @@ static chunk_header *split(chunk_header *ori, const chunk_size_t need)
 	return ret;
 }
 
-static void en_bin(const int bin_num, chunk_header *c)
+static void en_bin(const int index, chunk_header *c_h)
 {
-	bin[bin_num].next = c;
+	if (bin[index].size == 0) {
+		bin[index].next = c_h;
+		c_h->prev = &bin[index];
+		bin[index].prev = c_h;
+		c_h->next = &bin[index];
+	} else {
+		chunk_header *tmp;
+		switch (index) {
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			tmp = bin[index].prev;
+			bin[index].prev = c_h;
+			c_h->next = &bin[index];
+			tmp->next = c_h;
+			c_h->prev = tmp;
+			break;
+		case 6:
+			break;
+		}
+	}
+	bin[index].size++;
 }
 
-static chunk_header de_bin()
+static chunk_header *de_bin()
 {
-	// return NULL;
+	return NULL;
 }
