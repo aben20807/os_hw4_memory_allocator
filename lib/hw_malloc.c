@@ -3,7 +3,8 @@
 #include <stdlib.h>
 
 bool has_init = false;
-chunk_ptr_t start_sbrk = NULL;
+void *start_brk = NULL;
+void *heap_brk = NULL;
 struct bin_t bin[7] = {};
 
 void *hw_malloc(size_t bytes)
@@ -15,17 +16,20 @@ void *hw_malloc(size_t bytes)
 			bin[i].prev = &bin[i];
 			bin[i].next = &bin[i];
 		}
-		start_sbrk = (chunk_ptr_t)sbrk(64 * 1024);
+		start_brk = sbrk(64 * 1024);
+		heap_brk = start_brk;
 		chunk_header *s = create_chunk(64 * 1024);
-		printf("sbrk: %p, size: %lli\n", start_sbrk, s->chunk_size);
+		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		if (64 * 1024 - chunk_size > 8) {
-			split();
+			chunk_header *c = split(s, chunk_size);
+			printf("%lld\n", c->chunk_size);
+			printf("%p, size: %lli\n", start_brk, s->chunk_size);
 		} else {
 		}
 	} else {
 	}
-	void *ptr = sbrk(0);
-	printf("%p\n", ptr);
+	// void *ptr = sbrk(0);
+	// printf("%p\n", ptr);
 	return NULL;
 }
 
@@ -36,12 +40,13 @@ int hw_free(void *mem)
 
 void *get_start_sbrk(void)
 {
-	return (void *)start_sbrk;
+	return (void *)start_brk;
 }
 
 static chunk_header *create_chunk(const chunk_size_t size)
 {
-	chunk_header *ret = calloc(1, sizeof(chunk_header));
+	chunk_header *ret = heap_brk;
+	heap_brk += sizeof(chunk_header);
 	ret->chunk_size = size;
 	ret->prev = NULL;
 	ret->next = NULL;
@@ -50,12 +55,18 @@ static chunk_header *create_chunk(const chunk_size_t size)
 	return ret;
 }
 
-static void split()
+static chunk_header *split(chunk_header *ori, const chunk_size_t need)
 {
+	ori->chunk_size -= need;
+	ori->pre_chunk_size = need;
+	ori->prev_free_flag = 0;
+	chunk_header *ret = create_chunk(need);
+	return ret;
 }
 
-static void en_bin(struct chunk_header c)
+static void en_bin(const int bin_num, chunk_header *c)
 {
+	bin[bin_num].next = c;
 }
 
 static chunk_header de_bin()
