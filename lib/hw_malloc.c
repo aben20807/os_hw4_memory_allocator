@@ -17,7 +17,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need);
 
 void *hw_malloc(size_t bytes)
 {
-	long long need = bytes + 40LL;
+	long long need = bytes + 40LL + (bytes % 8 != 0 ? (8 - (bytes % 8)) : 0);
 	if (!has_init) {
 		has_init = true;
 		for (int i = 0; i < 7; i++) {
@@ -31,16 +31,10 @@ void *hw_malloc(size_t bytes)
 		chunk_header *s = create_chunk(64 * 1024);
 		heap_brk = start_brk; // reset heap top pointer
 		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
-		// if (64 * 1024 - need > 8) {
 		chunk_header *c = split(&s, need);
 		return (void *)((intptr_t)(void*)c +
 		                sizeof(chunk_header) -
 		                (intptr_t)(void*)start_brk);
-		// } else {
-		// return (void *)((intptr_t)(void*)s +
-		// sizeof(chunk_header) -
-		// (intptr_t)(void*)start_brk);
-		// }
 	} else {
 		chunk_header *r = NULL;
 		int bin_num = search_bin(need);
@@ -57,13 +51,6 @@ void *hw_malloc(size_t bytes)
 			                sizeof(chunk_header) -
 			                (intptr_t)(void*)start_brk);
 		}
-		//     if (r == NULL) {
-		//         printf("not found in bin\n");
-		//     } else {
-		//         return (void *)((intptr_t)(void*)r +
-		//                         sizeof(chunk_header) -
-		//                         (intptr_t)(void*)start_brk);
-		//     }
 	}
 	return NULL;
 }
@@ -96,9 +83,7 @@ static chunk_header *create_chunk(const chunk_size_t need)
 
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
-	printf("ori %p size: %lld, need: %lld\n", (*ori), (*ori)->chunk_size, need);
 	if ((*ori)->chunk_size - need >= 8) {
-		// printf("%p, %p\n", *ori, heap_brk);
 		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
 		new->chunk_size = (*ori)->chunk_size - need;
 		new->pre_chunk_size = need;
@@ -106,7 +91,6 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 		*ori = new;
 		chunk_header *ret = create_chunk(need);
 		en_bin(6, (*ori));
-		printf("en %p size: %lld\n", (*ori), (*ori)->chunk_size);
 		return ret;
 	} else {
 		return (*ori);
