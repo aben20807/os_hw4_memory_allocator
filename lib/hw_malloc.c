@@ -2,10 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*Global Variable*/
 bool has_init = false;
 void *start_brk = NULL;
 void *heap_brk = NULL;
 bin_t bin[7] = {};
+/*Static function*/
+static chunk_header *create_chunk(const chunk_size_t size);
+static chunk_header *split(chunk_header *ori, const chunk_size_t need);
+static void en_bin(const int bin_num, chunk_header *c_h);
+static chunk_header *de_bin(const int index);
 
 void *hw_malloc(size_t bytes)
 {
@@ -25,7 +31,9 @@ void *hw_malloc(size_t bytes)
 			chunk_header *c = split(s, chunk_size);
 			printf("bin size: %d\n", bin[0].size);
 			en_bin(0, c);
-			printf("bin size: %d\n", bin[0].size);
+			en_bin(6, s);
+			printf("bin0 size: %d\n", bin[0].size);
+			printf("bin6 size: %d\n", bin[6].size);
 			// printf("%lld\n", c->chunk_size);
 			// printf("%p, size: %lli\n", start_brk, s->chunk_size);
 		} else {
@@ -77,6 +85,7 @@ static void en_bin(const int index, chunk_header *c_h)
 		c_h->next = &bin[index];
 	} else {
 		chunk_header *tmp;
+		chunk_header *cur;
 		switch (index) {
 		case 0:
 		case 1:
@@ -91,13 +100,32 @@ static void en_bin(const int index, chunk_header *c_h)
 			c_h->prev = tmp;
 			break;
 		case 6:
+			if (bin[6].size > 0 &&
+			    c_h->chunk_size > ((chunk_header *)bin[6].next)->chunk_size) {
+				tmp = bin[index].next;
+				bin[index].next = c_h;
+				c_h->prev = &bin[index];
+				tmp->prev = c_h;
+				c_h->next = tmp;
+			} else {
+				cur = bin[6].prev;
+				while (cur != (void *)&bin[6]) {
+					if (c_h->chunk_size < cur->chunk_size) {
+						tmp = cur->next;
+						cur->next = c_h;
+						c_h->prev = cur;
+						tmp->prev = c_h;
+						c_h->next = tmp;
+					}
+				}
+			}
 			break;
 		}
 	}
 	bin[index].size++;
 }
 
-static chunk_header *de_bin()
+static chunk_header *de_bin(const int index)
 {
 	return NULL;
 }
