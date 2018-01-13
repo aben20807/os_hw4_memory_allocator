@@ -15,6 +15,7 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need);
 static int search_bin(const chunk_size_t need);
 static void en_bin(const int bin_num, chunk_header *c_h);
 static chunk_header *de_bin(const int index, const chunk_size_t need);
+static int check_valid_free(void *mem);
 
 void *hw_malloc(size_t bytes)
 {
@@ -57,7 +58,11 @@ void *hw_malloc(size_t bytes)
 
 int hw_free(void *mem)
 {
-	return 0;
+	if (!check_valid_free(mem)) {
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 void *get_start_sbrk(void)
@@ -231,4 +236,28 @@ void watch_heap()
 		printf("prev_free:%lld\n", cur->prev_free_flag);
 		cur = (void *)((intptr_t)(void*)cur + (intptr_t)(void*)cur->chunk_size);
 	}
+}
+
+static int check_valid_free(void *mem)
+{
+	mem = (void *)((intptr_t)(void*)mem +
+	               (intptr_t)(void*)start_brk);
+	void *cur = start_brk;
+	while ((intptr_t)(void*)cur < (intptr_t)(void*)mem) {
+		// printf("0x%08" PRIXPTR "\n", (uintptr_t)cur);
+		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk > 65536) {
+			break;
+		}
+		cur = (void *)((intptr_t)(void*)cur +
+		               (intptr_t)(void*)sizeof(chunk_header));
+		if (cur == mem) {
+			return 1;
+		}
+		cur = (void *)((intptr_t)(void*)cur -
+		               (intptr_t)(void*)sizeof(chunk_header));
+		// printf("%lld\n", ((chunk_header *)cur)->chunk_size);
+		cur = (void *)((intptr_t)(void*)cur +
+		               (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
+	}
+	return 0;
 }
