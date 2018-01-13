@@ -32,11 +32,12 @@ void *hw_malloc(size_t bytes)
 		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		if (64 * 1024 - chunk_size > 8) {
 			chunk_header *c = split(s, chunk_size);
-			// printf("c:\t%p\n", c);
-			// printf("s s: %lld\n", s->chunk_size);
 			en_bin(6, s);
-			return (c + 1); // + 1 (sizeof(chunk_header))
+			void *ret = (void *)((intptr_t)(void*)c + 40 - (intptr_t)(void*)start_brk);
+			return ret;//(void *)((long long)c + 40 - (long long)start_brk);
+			// + 1 (sizeof(chunk_header))
 		} else {
+			return (s + 1);
 		}
 	} else {
 	}
