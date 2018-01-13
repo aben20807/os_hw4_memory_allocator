@@ -8,6 +8,7 @@ void *start_brk = NULL;
 void *heap_brk = NULL;
 bin_t s_bin[7] = {};
 bin_t *bin[7];
+int slice_num = 1;
 /*Static function*/
 static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
@@ -30,7 +31,6 @@ void *hw_malloc(size_t bytes)
 		heap_brk = start_brk;
 		chunk_header *s = create_chunk(64 * 1024);
 		heap_brk = start_brk; // reset heap top pointer
-		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		chunk_header *c = split(&s, need);
 		return (void *)((intptr_t)(void*)c +
 		                sizeof(chunk_header) -
@@ -76,8 +76,6 @@ static chunk_header *create_chunk(const chunk_size_t need)
 	ret->chunk_size = need;
 	ret->prev = NULL;
 	ret->next = NULL;
-	ret->pre_chunk_size = 0;
-	ret->prev_free_flag = 0;
 	return ret;
 }
 
@@ -86,11 +84,12 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 	if ((*ori)->chunk_size - need >= 8) {
 		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
 		new->chunk_size = (*ori)->chunk_size - need;
-		new->pre_chunk_size = need;
+		new->prev_chunk_size = need;
 		new->prev_free_flag = 0;
 		*ori = new;
 		chunk_header *ret = create_chunk(need);
 		en_bin(6, (*ori));
+		slice_num++;
 		return ret;
 	} else {
 		return (*ori);
@@ -213,5 +212,23 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 			}
 		}
 		return NULL; //TODO should not reach here
+	}
+}
+
+void watch_heap()
+{
+	chunk_header *cur = start_brk;
+	int count = 0;
+	printf("slice: %d\n", slice_num);
+	while (count++ < slice_num) {
+		printf("----------\n");
+		printf("0x%08" PRIxPTR "(",
+		       (uintptr_t)(void *)((intptr_t)(void*)cur - (intptr_t)(void*)start_brk));
+		printf("0x%08" PRIxPTR ")\n",
+		       (uintptr_t)(void *)cur);
+		printf("chun_size:%lld\n", cur->chunk_size);
+		printf("prev_size:%lld\n", cur->prev_chunk_size);
+		printf("prev_free:%lld\n", cur->prev_free_flag);
+		cur = (void *)((intptr_t)(void*)cur + (intptr_t)(void*)cur->chunk_size);
 	}
 }
