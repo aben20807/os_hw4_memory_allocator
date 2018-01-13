@@ -1,3 +1,4 @@
 *.o
 *.orig
+*.txt
 hw4_mm_test
