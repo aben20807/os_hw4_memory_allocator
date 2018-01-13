@@ -27,22 +27,21 @@ void *hw_malloc(size_t bytes)
 		}
 		start_brk = sbrk(64 * 1024);
 		heap_brk = start_brk;
-		// printf("heap:\t%p\n", heap_brk);
 		chunk_header *s = create_chunk(64 * 1024);
 		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		if (64 * 1024 - chunk_size > 8) {
 			chunk_header *c = split(s, chunk_size);
 			en_bin(6, s);
-			void *ret = (void *)((intptr_t)(void*)c + 40 - (intptr_t)(void*)start_brk);
-			return ret;//(void *)((long long)c + 40 - (long long)start_brk);
-			// + 1 (sizeof(chunk_header))
+			return (void *)((intptr_t)(void*)c +
+			                sizeof(chunk_header) -
+			                (intptr_t)(void*)start_brk);
 		} else {
-			return (s + 1);
+			return (void *)((intptr_t)(void*)s +
+			                sizeof(chunk_header) -
+			                (intptr_t)(void*)start_brk);
 		}
 	} else {
 	}
-	// void *ptr = sbrk(0);
-	// printf("%p\n", ptr);
 	return NULL;
 }
 
