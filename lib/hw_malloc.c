@@ -28,6 +28,7 @@ void *hw_malloc(size_t bytes)
 		start_brk = sbrk(64 * 1024);
 		heap_brk = start_brk;
 		chunk_header *s = create_chunk(64 * 1024);
+		heap_brk = start_brk; // reset heap top pointer
 		printf("sbrk: %p, size: %lli\n", start_brk, s->chunk_size);
 		if (64 * 1024 - chunk_size > 8) {
 			chunk_header *c = split(s, chunk_size);
@@ -41,6 +42,29 @@ void *hw_malloc(size_t bytes)
 			                (intptr_t)(void*)start_brk);
 		}
 	} else {
+		chunk_header *r = NULL;
+		if (chunk_size <= 48) {
+			r = de_bin(0, chunk_size);
+		} else if (chunk_size <= 56) {
+			r = de_bin(1, chunk_size);
+		} else if (chunk_size <= 64) {
+			r = de_bin(2, chunk_size);
+		} else if (chunk_size <= 72) {
+			r = de_bin(3, chunk_size);
+		} else if (chunk_size <= 80) {
+			r = de_bin(4, chunk_size);
+		} else if (chunk_size <= 88) {
+			r = de_bin(5, chunk_size);
+		} else { // > 88
+			// r = de_bin(6, chunk_size);
+		}
+		if (r == NULL) {
+			printf("not found in bin\n");
+		} else {
+			return (void *)((intptr_t)(void*)r +
+			                sizeof(chunk_header) -
+			                (intptr_t)(void*)start_brk);
+		}
 	}
 	return NULL;
 }
@@ -57,11 +81,12 @@ void *get_start_sbrk(void)
 
 static chunk_header *create_chunk(const chunk_size_t size)
 {
-	// printf("heap:\t%p size:%lld\n", heap_brk, size);
+	if (heap_brk - start_brk + size > 64 * 1024) {
+		printf("heap not enough\n");
+		return NULL;
+	}
 	chunk_header *ret = heap_brk;
-	printf("ret:\t%p\n", ret);
-	heap_brk += (sizeof(chunk_header));
-	// heap_brk += (sizeof(chunk_header) + size);
+	heap_brk += (sizeof(chunk_header) + size);
 	ret->chunk_size = size;
 	ret->prev = NULL;
 	ret->next = NULL;
