@@ -42,7 +42,7 @@ int main()
 	char input[20];
 	while (!feof(stdin)) {
 		if (fgets(input, 20, stdin) != NULL) {
-			printf("%s", input);
+			// printf("%s", input);
 			if (input[0] == 'a' &&
 			    input[1] == 'l' &&
 			    input[2] == 'l' &&
@@ -50,14 +50,16 @@ int main()
 			    input[4] == 'c'
 			   ) {
 				size_t need = atoll(get_argv(input));
-				printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
+				hw_malloc(need);
+				// printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
 			} else if (input[0] == 'f' &&
 			           input[1] == 'r' &&
 			           input[2] == 'e' &&
 			           input[3] == 'e'
 			          ) {
 				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
-				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
+				hw_free(mem);
+				// printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
 			} else if (input[0] == 'p' &&
 			           input[1] == 'r' &&
 			           input[2] == 'i' &&
@@ -65,7 +67,7 @@ int main()
 			           input[4] == 't'
 			          ) {
 				int i = input[10] - '0';
-				show_bin(i);
+				// show_bin(i);
 			}
 		}
 	}

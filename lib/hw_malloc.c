@@ -48,6 +48,11 @@ void *hw_malloc(size_t bytes)
 			                (intptr_t)(void*)start_brk);
 		} else { // bin_num = 6
 			chunk_header *s = de_bin(6, need);
+			if (s == NULL) {
+				PRINTERR("bin[6] NULL\n");
+				// show_bin(6);
+				return NULL;
+			}
 			chunk_header *c = split(&s, need);
 			return (void *)((intptr_t)(void*)c +
 			                sizeof(chunk_header) -
@@ -62,6 +67,7 @@ int hw_free(void *mem)
 	void *a_mem = (void *)((intptr_t)(void*)mem +
 	                       (intptr_t)(void*)start_brk);
 	if (!has_init || !check_valid_free(a_mem)) {
+		printf("0x%08" PRIxPTR "\n", (uintptr_t)mem);
 		return 0;
 	} else {
 		// TODO if free the top one
@@ -171,6 +177,10 @@ static void en_bin(const int index, chunk_header *c_h)
 		c_h->prev = bin[index];
 		bin[index]->prev = c_h;
 		c_h->next = bin[index];
+		if (index == 6) {
+			PRINTERR("en bin[6] == 0\n");
+			show_bin(6);
+		}
 	} else {
 		chunk_header *tmp;
 		chunk_header *cur;
@@ -188,6 +198,9 @@ static void en_bin(const int index, chunk_header *c_h)
 			c_h->prev = tmp;
 			break;
 		case 6:
+			// PRINTERR("en bin[6]\n");
+			// if (bin[6]->size == 0) {
+			// } else
 			if (bin[6]->size > 0 &&
 			    c_h->chunk_size > ((chunk_header *)bin[6]->next)->chunk_size) {
 				tmp = bin[index]->next;
@@ -197,17 +210,21 @@ static void en_bin(const int index, chunk_header *c_h)
 				c_h->next = tmp;
 			} else {
 				cur = bin[6]->prev;
-				while (cur != (void *)bin[6]) {
+				while ((void *)cur != (void *)bin[6]) {
 					if (c_h->chunk_size < cur->chunk_size) {
+						printf("%lld < %lld\n", c_h->chunk_size, cur->chunk_size);
 						tmp = cur->next;
 						cur->next = c_h;
 						c_h->prev = cur;
 						tmp->prev = c_h;
 						c_h->next = tmp;
+						break;
 					}
 					cur = cur->prev;
 				}
 			}
+			printf("en bin[6]: %lld\n", c_h->chunk_size);
+			show_bin(6);
 			break;
 		}
 	}
@@ -239,13 +256,14 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 			}
 			ret->prev = NULL;
 			ret->next = NULL;
+			bin[index]->size--;
 			return ret;
 		case 6:
 			if (bin[6]->size > 0 &&
 			    need > ((chunk_header *)bin[6]->next)->chunk_size) {
-				PRINTERR("not enough bin: ");
-				printf("%d, %lld, need: %lld\n", bin[6]->size,
-				       ((chunk_header *)bin[6]->next)->chunk_size, need);
+				PRINTERR("not enough bin\n");
+				// printf("%d, %lld, need: %lld\n", bin[6]->size,
+				// ((chunk_header *)bin[6]->next)->chunk_size, need);
 				return NULL;
 			} else {
 				cur = bin[6]->prev;
@@ -257,6 +275,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 						((chunk_header *)cur->next)->prev = cur->prev;
 						ret->prev = NULL;
 						ret->next = NULL;
+						bin[index]->size--;
 						return ret;
 					}
 					cur = cur->prev;
