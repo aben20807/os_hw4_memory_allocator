@@ -5,6 +5,8 @@ int main()
 	char input[20];
 	while (!feof(stdin)) {
 		if (fgets(input, 20, stdin) != NULL) {
+			// printf("%s", input);
+			// fflush(stdout);
 			if (input[0] == 'a' &&
 			    input[1] == 'l' &&
 			    input[2] == 'l' &&

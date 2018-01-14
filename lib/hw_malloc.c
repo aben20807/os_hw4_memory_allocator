@@ -13,6 +13,7 @@ chunk_header *top[2];
 /*Static function*/
 static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
+static chunk_header *merge(chunk_header *h);
 static int search_debin(const chunk_size_t need);
 static int search_enbin(const chunk_size_t need);
 static void en_bin(const int index, chunk_header *c_h);
@@ -35,14 +36,14 @@ void *hw_malloc(size_t bytes)
 		top[1] = sbrk(40);
 		top[0]->prev = NULL;
 		top[0]->next = NULL;
-		top[0]->chunk_size = 0;
-		top[0]->prev_chunk_size = 0;
+		top[0]->chunk_size = 40;
+		top[0]->prev_chunk_size = 64 * 1024;
 		top[0]->prev_free_flag = 0;
 		top[1]->prev = NULL;
 		top[1]->next = NULL;
-		top[1]->chunk_size = 0;
-		top[1]->prev_chunk_size = 0;
-		top[1]->prev_free_flag = 1;
+		top[1]->chunk_size = 40;
+		top[1]->prev_chunk_size = 40;
+		top[1]->prev_free_flag = 0;
 		heap_brk = start_brk;
 		chunk_header *s = create_chunk(64 * 1024);
 		heap_brk = start_brk; // reset heap top pointer
@@ -70,6 +71,10 @@ void *hw_malloc(size_t bytes)
 				return NULL; // XXX
 			}
 			chunk_header *c = split(&s, need);
+			if (c == NULL) {
+				PRINTERR("NULL after split\n");
+				return NULL;
+			}
 			return (void *)((intptr_t)(void*)c +
 			                sizeof(chunk_header) -
 			                (intptr_t)(void*)start_brk);
@@ -91,8 +96,14 @@ int hw_free(void *mem)
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
 		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
 		nxt->prev_free_flag = 1;
+		if (nxt == top[0]) {
+			// watch_heap();
+			// heap_brk -= nxt->prev_chunk_size;
+			// printf("%p -+-+\n", heap_brk);
+		}
 		// printf("%d\n", search_enbin(h->chunk_size));
-		en_bin(search_enbin(h->chunk_size), h);
+		chunk_header *m = merge(h);
+		en_bin(search_enbin(m->chunk_size), m);
 		return 1;
 	}
 }
@@ -107,6 +118,7 @@ void show_bin(const int i)
 	if (!has_init) {
 		return;
 	}
+	// printf("bin size: %d\n", bin[i]->size);
 	chunk_header *cur = bin[i]->next;
 	while ((void *)cur != (void *)bin[i]) {
 		void *r_cur = (void *)((intptr_t)(void*)cur -
@@ -122,6 +134,7 @@ static chunk_header *create_chunk(const chunk_size_t need)
 		PRINTERR("heap not enough\n");
 		return NULL;
 	}
+	// heap_brk = start_brk + 64 * 1024 - (top[0]->prev_chunk_size);
 	chunk_header *ret = heap_brk;
 	heap_brk += need;
 	ret->chunk_size = need;
@@ -132,7 +145,10 @@ static chunk_header *create_chunk(const chunk_size_t need)
 
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
-	if ((*ori)->chunk_size - need >= 8) {
+	if ((*ori)->chunk_size - need >= 48) {
+		if ((*ori)->chunk_size == top[0]->prev_chunk_size) {
+			top[0]->prev_chunk_size -= need;
+		}
 		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
 		new->chunk_size = (*ori)->chunk_size - need;
 		new->prev_chunk_size = need;
@@ -143,7 +159,66 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 		slice_num++;
 		return ret;
 	} else {
+		heap_brk += need;
 		return (*ori);
+	}
+}
+
+static chunk_header *merge(chunk_header *h)
+{
+	chunk_size_t ori_size = h->chunk_size;
+	chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
+	                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
+	chunk_header *nnxt = (chunk_header *)((intptr_t)(void*)nxt +
+	                                      (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
+	// if (nxt == top[0]) {
+	//     heap_brk -= (ori_size);
+	//     printf("%p 1-+- %lld\n", heap_brk, ori_size);
+	// }
+	if (nnxt->prev_free_flag == 1) {
+		nnxt->prev_chunk_size += h->chunk_size;
+		((chunk_header *)nxt->prev)->next = nxt->next;
+		((chunk_header *)nxt->next)->prev = nxt->prev;
+		bin[search_enbin(nxt->chunk_size)]->size--;
+		h->chunk_size += nxt->chunk_size;
+		nxt->chunk_size = 0;
+		nxt->prev = NULL;
+		nxt->next = NULL;
+	}
+	if (h->prev_free_flag == 1) {
+		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
+		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
+		chunk_header *pre = (chunk_header *)((intptr_t)(void*)h -
+		                                     (intptr_t)(void*)((chunk_header *)h)->prev_chunk_size);
+		nxt->prev_chunk_size += pre->chunk_size;
+		if (nxt == top[0]) {
+			// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
+			// heap_brk -= (pre->chunk_size);
+			heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
+			                        pre->chunk_size));
+			// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
+		}
+		((chunk_header *)pre->prev)->next = pre->next;
+		((chunk_header *)pre->next)->prev = pre->prev;
+		bin[search_enbin(pre->chunk_size)]->size--;
+		pre->chunk_size += h->chunk_size;
+		h->chunk_size = 0;
+		pre->prev = NULL;
+		pre->next = NULL;
+		h->prev = NULL;
+		h->next = NULL;
+		return pre;
+	} else {
+		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
+		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
+		if (nxt == top[0]) {
+			// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
+			// heap_brk -= (nxt->prev_chunk_size - (void *)0x27);
+			heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
+			                        nxt->prev_chunk_size));
+			// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
+		}
+		return h;
 	}
 }
 
@@ -219,7 +294,7 @@ static void en_bin(const int index, chunk_header *c_h)
 			} else {
 				cur = bin[6]->prev;
 				while ((void *)cur != (void *)bin[6]) {
-					if (c_h->chunk_size < cur->chunk_size) {
+					if (c_h->chunk_size <= cur->chunk_size) {
 						tmp = cur->next;
 						cur->next = c_h;
 						c_h->prev = cur;
