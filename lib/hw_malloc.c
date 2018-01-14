@@ -14,7 +14,7 @@ static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
 static int search_debin(const chunk_size_t need);
 static int search_enbin(const chunk_size_t need);
-static void en_bin(const int bin_num, chunk_header *c_h);
+static void en_bin(const int index, chunk_header *c_h);
 static chunk_header *de_bin(const int index, const chunk_size_t need);
 static int check_valid_free(const void *mem);
 
@@ -64,9 +64,14 @@ int hw_free(void *mem)
 	if (!check_valid_free(r_mem)) {
 		return 0;
 	} else {
+		// TODO if free the top one
 		chunk_header *h = (chunk_header *)((intptr_t)(void*)r_mem -
 		                                   (intptr_t)(void*)sizeof(chunk_header));
-		printf("%d\n", search_enbin(h->chunk_size));
+		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
+		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
+		nxt->prev_free_flag = 1;
+		// printf("%d\n", search_enbin(h->chunk_size));
+		en_bin(search_enbin(h->chunk_size), h);
 		return 1;
 	}
 }
