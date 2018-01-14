@@ -9,6 +9,7 @@ void *heap_brk = NULL;
 bin_t s_bin[7] = {};
 bin_t *bin[7];
 int slice_num = 1;
+chunk_header *top[2];
 /*Static function*/
 static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
@@ -30,6 +31,18 @@ void *hw_malloc(size_t bytes)
 			bin[i]->size = 0;
 		}
 		start_brk = sbrk(64 * 1024);
+		top[0] = sbrk(40);
+		top[1] = sbrk(40);
+		top[0]->prev = NULL;
+		top[0]->next = NULL;
+		top[0]->chunk_size = 0;
+		top[0]->prev_chunk_size = 0;
+		top[0]->prev_free_flag = 0;
+		top[1]->prev = NULL;
+		top[1]->next = NULL;
+		top[1]->chunk_size = 0;
+		top[1]->prev_chunk_size = 0;
+		top[1]->prev_free_flag = 1;
 		heap_brk = start_brk;
 		chunk_header *s = create_chunk(64 * 1024);
 		heap_brk = start_brk; // reset heap top pointer
@@ -54,7 +67,7 @@ void *hw_malloc(size_t bytes)
 				// printf("%lld\n", need);
 				// show_bin(6);
 				// printf("\n\n");
-				// return NULL; // XXX
+				return NULL; // XXX
 			}
 			chunk_header *c = split(&s, need);
 			return (void *)((intptr_t)(void*)c +
@@ -315,7 +328,7 @@ static int check_valid_free(const void *a_mem)
 			               (intptr_t)(void*)sizeof(chunk_header));
 			nxt = (void *)((intptr_t)(void*)nxt +
 			               (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
-			if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk < 65536 &&
+			if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk <= 65536 &&
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
