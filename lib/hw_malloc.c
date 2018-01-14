@@ -59,13 +59,13 @@ void *hw_malloc(size_t bytes)
 
 int hw_free(void *mem)
 {
-	void *r_mem = (void *)((intptr_t)(void*)mem +
+	void *a_mem = (void *)((intptr_t)(void*)mem +
 	                       (intptr_t)(void*)start_brk);
-	if (!check_valid_free(r_mem)) {
+	if (!check_valid_free(a_mem)) {
 		return 0;
 	} else {
 		// TODO if free the top one
-		chunk_header *h = (chunk_header *)((intptr_t)(void*)r_mem -
+		chunk_header *h = (chunk_header *)((intptr_t)(void*)a_mem -
 		                                   (intptr_t)(void*)sizeof(chunk_header));
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
 		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
@@ -79,6 +79,17 @@ int hw_free(void *mem)
 void *get_start_sbrk(void)
 {
 	return (void *)start_brk;
+}
+
+void show_bin(const int i)
+{
+	chunk_header *cur = bin[i]->next;
+	while ((void *)cur != (void *)bin[i]) {
+		void *r_cur = (void *)((intptr_t)(void*)cur -
+		                       (intptr_t)(void*)start_brk);
+		printf("0x%08" PRIxPTR "--------%lld\n", (uintptr_t)r_cur, cur->chunk_size);
+		cur = cur->next;
+	}
 }
 
 static chunk_header *create_chunk(const chunk_size_t need)
@@ -270,19 +281,19 @@ void watch_heap()
 	}
 }
 
-static int check_valid_free(const void *r_mem)
+static int check_valid_free(const void *a_mem)
 {
-	// void *r_mem = (void *)((intptr_t)(void*)mem +
+	// void *a_mem = (void *)((intptr_t)(void*)mem +
 	// (intptr_t)(void*)start_brk);
 	void *cur = start_brk;
-	while ((intptr_t)(void*)cur < (intptr_t)(void*)r_mem) {
+	while ((intptr_t)(void*)cur < (intptr_t)(void*)a_mem) {
 		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk >= 65536) {
 			PRINTERR("out of heap\n");
 			break;
 		}
 		cur = (void *)((intptr_t)(void*)cur +
 		               (intptr_t)(void*)sizeof(chunk_header));
-		if (cur == r_mem) {
+		if (cur == a_mem) {
 			// TODO if free the top one
 			void *nxt;
 			nxt = (void *)((intptr_t)(void*)cur -

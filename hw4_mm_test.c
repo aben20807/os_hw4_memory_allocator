@@ -2,24 +2,41 @@
 
 int main()
 {
-	// printf("chunk_header size: %ld\n", sizeof(struct chunk_header));
-	printf("4:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(4));
-	printf("12:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(12));
-	printf("20:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(20));
-	watch_heap();
+	/*
+	   // printf("chunk_header size: %ld\n", sizeof(struct chunk_header));
+	   printf("4:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(4));
+	   printf("12:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(12));
+	   printf("20:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(20));
+	   // watch_heap();
+	   void *ptr = (void*)0x28;
+	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
+	   ptr = (void*)0x25;
+	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
+	   ptr = (void*)0x90;
+	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
+	   ptr = (void*)0x00100000;
+	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
+	   // watch_heap();
+	   */
+	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
+	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
+	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
+	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
 	void *ptr = (void*)0x28;
-	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
 	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	ptr = (void*)0x25;
-	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	ptr = (void*)0x98;
 	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	ptr = (void*)0x90;
-	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	ptr = (void*)0x00100000;
-	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	watch_heap();
+	show_bin(0);
+	show_bin(1);
+	show_bin(2);
+	show_bin(3);
+	show_bin(4);
+	show_bin(5);
+	show_bin(6);
 	// printf("%s\n", hw_free(NULL) == 1 ? "success" : "fail");
 	// printf("start_brk: %p\n", get_start_sbrk());
 	// char input[20];
