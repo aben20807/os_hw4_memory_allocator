@@ -2,47 +2,9 @@
 
 int main()
 {
-	/*
-	   // printf("chunk_header size: %ld\n", sizeof(struct chunk_header));
-	   printf("4:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(4));
-	   printf("12:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(12));
-	   printf("20:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(20));
-	   // watch_heap();
-	   void *ptr = (void*)0x28;
-	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	   ptr = (void*)0x25;
-	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	   ptr = (void*)0x90;
-	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	   ptr = (void*)0x00100000;
-	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
-	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	   // watch_heap();
-	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
-	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
-	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
-	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
-	void *ptr = (void*)0x28;
-	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	ptr = (void*)0x98;
-	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
-	show_bin(0);
-	show_bin(1);
-	show_bin(2);
-	show_bin(3);
-	show_bin(4);
-	show_bin(5);
-	show_bin(6);
-	   */
-	// printf("%s\n", hw_free(NULL) == 1 ? "success" : "fail");
-	// printf("start_brk: %p\n", get_start_sbrk());
 	char input[20];
 	while (!feof(stdin)) {
 		if (fgets(input, 20, stdin) != NULL) {
-			// printf("%s", input);
 			if (input[0] == 'a' &&
 			    input[1] == 'l' &&
 			    input[2] == 'l' &&
@@ -50,16 +12,14 @@ int main()
 			    input[4] == 'c'
 			   ) {
 				size_t need = atoll(get_argv(input));
-				hw_malloc(need);
-				// printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
+				printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
 			} else if (input[0] == 'f' &&
 			           input[1] == 'r' &&
 			           input[2] == 'e' &&
 			           input[3] == 'e'
 			          ) {
 				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
-				hw_free(mem);
-				// printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
+				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
 			} else if (input[0] == 'p' &&
 			           input[1] == 'r' &&
 			           input[2] == 'i' &&
@@ -67,7 +27,7 @@ int main()
 			           input[4] == 't'
 			          ) {
 				int i = input[10] - '0';
-				// show_bin(i);
+				show_bin(i);
 			}
 		}
 	}

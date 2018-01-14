@@ -67,7 +67,6 @@ int hw_free(void *mem)
 	void *a_mem = (void *)((intptr_t)(void*)mem +
 	                       (intptr_t)(void*)start_brk);
 	if (!has_init || !check_valid_free(a_mem)) {
-		printf("0x%08" PRIxPTR "\n", (uintptr_t)mem);
 		return 0;
 	} else {
 		// TODO if free the top one
@@ -177,10 +176,6 @@ static void en_bin(const int index, chunk_header *c_h)
 		c_h->prev = bin[index];
 		bin[index]->prev = c_h;
 		c_h->next = bin[index];
-		if (index == 6) {
-			PRINTERR("en bin[6] == 0\n");
-			show_bin(6);
-		}
 	} else {
 		chunk_header *tmp;
 		chunk_header *cur;
@@ -198,9 +193,6 @@ static void en_bin(const int index, chunk_header *c_h)
 			c_h->prev = tmp;
 			break;
 		case 6:
-			// PRINTERR("en bin[6]\n");
-			// if (bin[6]->size == 0) {
-			// } else
 			if (bin[6]->size > 0 &&
 			    c_h->chunk_size > ((chunk_header *)bin[6]->next)->chunk_size) {
 				tmp = bin[index]->next;
@@ -212,7 +204,6 @@ static void en_bin(const int index, chunk_header *c_h)
 				cur = bin[6]->prev;
 				while ((void *)cur != (void *)bin[6]) {
 					if (c_h->chunk_size < cur->chunk_size) {
-						printf("%lld < %lld\n", c_h->chunk_size, cur->chunk_size);
 						tmp = cur->next;
 						cur->next = c_h;
 						c_h->prev = cur;
@@ -223,8 +214,6 @@ static void en_bin(const int index, chunk_header *c_h)
 					cur = cur->prev;
 				}
 			}
-			printf("en bin[6]: %lld\n", c_h->chunk_size);
-			show_bin(6);
 			break;
 		}
 	}
