@@ -12,7 +12,8 @@ int slice_num = 1;
 /*Static function*/
 static chunk_header *create_chunk(const chunk_size_t size);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
-static int search_bin(const chunk_size_t need);
+static int search_debin(const chunk_size_t need);
+static int search_enbin(const chunk_size_t need);
 static void en_bin(const int bin_num, chunk_header *c_h);
 static chunk_header *de_bin(const int index, const chunk_size_t need);
 static int check_valid_free(const void *mem);
@@ -38,7 +39,7 @@ void *hw_malloc(size_t bytes)
 		                (intptr_t)(void*)start_brk);
 	} else {
 		chunk_header *r = NULL;
-		int bin_num = search_bin(need);
+		int bin_num = search_debin(need);
 		if (bin_num == -1) {
 		} else if (bin_num <= 5) {
 			r = de_bin(bin_num, need);
@@ -58,9 +59,14 @@ void *hw_malloc(size_t bytes)
 
 int hw_free(void *mem)
 {
-	if (!check_valid_free(mem)) {
+	void *r_mem = (void *)((intptr_t)(void*)mem +
+	                       (intptr_t)(void*)start_brk);
+	if (!check_valid_free(r_mem)) {
 		return 0;
 	} else {
+		chunk_header *h = (chunk_header *)((intptr_t)(void*)r_mem -
+		                                   (intptr_t)(void*)sizeof(chunk_header));
+		printf("%d\n", search_enbin(h->chunk_size));
 		return 1;
 	}
 }
@@ -101,7 +107,7 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 	}
 }
 
-static int search_bin(const chunk_size_t need)
+static int search_debin(const chunk_size_t need)
 {
 	for (int i = 0; i <= 5; i++) {
 		if (bin[i]->size == 0) {
@@ -116,6 +122,26 @@ static int search_bin(const chunk_size_t need)
 	} else {
 		PRINTERR("not any free chunk\n");
 		return -1;
+	}
+}
+
+static int search_enbin(const chunk_size_t size)
+{
+	switch (size) {
+	case 48:
+		return 0;
+	case 56:
+		return 1;
+	case 64:
+		return 2;
+	case 72:
+		return 3;
+	case 80:
+		return 4;
+	case 88:
+		return 5;
+	default:
+		return 6;
 	}
 }
 
@@ -239,10 +265,10 @@ void watch_heap()
 	}
 }
 
-static int check_valid_free(const void *mem)
+static int check_valid_free(const void *r_mem)
 {
-	void *r_mem = (void *)((intptr_t)(void*)mem +
-	                       (intptr_t)(void*)start_brk);
+	// void *r_mem = (void *)((intptr_t)(void*)mem +
+	// (intptr_t)(void*)start_brk);
 	void *cur = start_brk;
 	while ((intptr_t)(void*)cur < (intptr_t)(void*)r_mem) {
 		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk >= 65536) {
