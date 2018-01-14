@@ -55,9 +55,9 @@ int main()
 			           input[2] == 'e' &&
 			           input[3] == 'e'
 			          ) {
-				watch_heap();
+				// watch_heap();
 				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
-				printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)mem);
+				// printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)mem);
 				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
 			}
 		}

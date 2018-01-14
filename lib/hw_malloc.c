@@ -294,13 +294,14 @@ static int check_valid_free(const void *a_mem)
 		cur = (void *)((intptr_t)(void*)cur +
 		               (intptr_t)(void*)sizeof(chunk_header));
 		if (cur == a_mem) {
-			// TODO if free the top one or second top
+			// TODO check if free the top one
 			void *nxt;
 			nxt = (void *)((intptr_t)(void*)cur -
 			               (intptr_t)(void*)sizeof(chunk_header));
 			nxt = (void *)((intptr_t)(void*)nxt +
 			               (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
-			if (((chunk_header *)nxt)->prev_free_flag == 0) {
+			if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk < 65536 &&
+			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
 				return 0;
