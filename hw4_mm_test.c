@@ -13,6 +13,7 @@ int main()
 			   ) {
 				size_t need = atoll(get_argv(input));
 				printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
+				// hw_malloc(need);
 			} else if (input[0] == 'f' &&
 			           input[1] == 'r' &&
 			           input[2] == 'e' &&
@@ -20,6 +21,7 @@ int main()
 			          ) {
 				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
 				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
+				// hw_free(mem);
 			} else if (input[0] == 'p' &&
 			           input[1] == 'r' &&
 			           input[2] == 'i' &&

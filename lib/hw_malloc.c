@@ -50,8 +50,11 @@ void *hw_malloc(size_t bytes)
 			chunk_header *s = de_bin(6, need);
 			if (s == NULL) {
 				PRINTERR("bin[6] NULL\n");
+				// printf("\n\n");
+				// printf("%lld\n", need);
 				// show_bin(6);
-				return NULL;
+				// printf("\n\n");
+				// return NULL; // XXX
 			}
 			chunk_header *c = split(&s, need);
 			return (void *)((intptr_t)(void*)c +
@@ -257,7 +260,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 			} else {
 				cur = bin[6]->prev;
 				while (cur != (void *)bin[6]) {
-					if (need < cur->chunk_size) {
+					if (need <= cur->chunk_size) {
 						ret = cur;
 						//TODO check if cur->prev or next is bin
 						((chunk_header *)cur->prev)->next = cur->next;
