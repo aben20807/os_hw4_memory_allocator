@@ -42,6 +42,7 @@ int main()
 	char input[20];
 	while (!feof(stdin)) {
 		if (fgets(input, 20, stdin) != NULL) {
+			printf("%s", input);
 			if (input[0] == 'a' &&
 			    input[1] == 'l' &&
 			    input[2] == 'l' &&
@@ -55,10 +56,16 @@ int main()
 			           input[2] == 'e' &&
 			           input[3] == 'e'
 			          ) {
-				// watch_heap();
 				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
-				// printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)mem);
 				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
+			} else if (input[0] == 'p' &&
+			           input[1] == 'r' &&
+			           input[2] == 'i' &&
+			           input[3] == 'n' &&
+			           input[4] == 't'
+			          ) {
+				int i = input[10] - '0';
+				show_bin(i);
 			}
 		}
 	}

@@ -83,6 +83,9 @@ void *get_start_sbrk(void)
 
 void show_bin(const int i)
 {
+	if (!has_init) {
+		return;
+	}
 	chunk_header *cur = bin[i]->next;
 	while ((void *)cur != (void *)bin[i]) {
 		void *r_cur = (void *)((intptr_t)(void*)cur -
@@ -214,6 +217,7 @@ static void en_bin(const int index, chunk_header *c_h)
 static chunk_header *de_bin(const int index, const chunk_size_t need)
 {
 	if (bin[index]->size == 0) {
+		PRINTERR("size = 0\n");
 		return NULL;
 	} else {
 		chunk_header *ret;
