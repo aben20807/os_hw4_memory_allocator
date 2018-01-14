@@ -21,7 +21,6 @@ int main()
 	   printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
 	   printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
 	   // watch_heap();
-	   */
 	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
 	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
 	printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(16));
@@ -37,16 +36,32 @@ int main()
 	show_bin(4);
 	show_bin(5);
 	show_bin(6);
+	   */
 	// printf("%s\n", hw_free(NULL) == 1 ? "success" : "fail");
 	// printf("start_brk: %p\n", get_start_sbrk());
-	// char input[20];
-	// while (!feof(stdin)) {
-	//     if (fgets(input, 20, stdin) != NULL) {
-	//         size_t need = atoll(get_argv(input));
-	//         printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
-	//         // printf("%lld\n", atoll(get_argv(input)));
-	//     }
-	// }
+	char input[20];
+	while (!feof(stdin)) {
+		if (fgets(input, 20, stdin) != NULL) {
+			if (input[0] == 'a' &&
+			    input[1] == 'l' &&
+			    input[2] == 'l' &&
+			    input[3] == 'o' &&
+			    input[4] == 'c'
+			   ) {
+				size_t need = atoll(get_argv(input));
+				printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
+			} else if (input[0] == 'f' &&
+			           input[1] == 'r' &&
+			           input[2] == 'e' &&
+			           input[3] == 'e'
+			          ) {
+				watch_heap();
+				void *mem = (void *)(uintptr_t)strtol(get_argv(input), NULL, 16);
+				printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)mem);
+				printf("%s\n", hw_free(mem) == 1 ? "success" : "fail");
+			}
+		}
+	}
 	return 0;
 }
 

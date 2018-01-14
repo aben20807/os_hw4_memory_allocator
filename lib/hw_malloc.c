@@ -61,7 +61,7 @@ int hw_free(void *mem)
 {
 	void *a_mem = (void *)((intptr_t)(void*)mem +
 	                       (intptr_t)(void*)start_brk);
-	if (!check_valid_free(a_mem)) {
+	if (!has_init || !check_valid_free(a_mem)) {
 		return 0;
 	} else {
 		// TODO if free the top one
@@ -294,7 +294,7 @@ static int check_valid_free(const void *a_mem)
 		cur = (void *)((intptr_t)(void*)cur +
 		               (intptr_t)(void*)sizeof(chunk_header));
 		if (cur == a_mem) {
-			// TODO if free the top one
+			// TODO if free the top one or second top
 			void *nxt;
 			nxt = (void *)((intptr_t)(void*)cur -
 			               (intptr_t)(void*)sizeof(chunk_header));
