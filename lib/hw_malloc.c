@@ -73,7 +73,7 @@ void *get_start_sbrk(void)
 static chunk_header *create_chunk(const chunk_size_t need)
 {
 	if (heap_brk - start_brk + need > 64 * 1024) {
-		printf("heap not enough\n");
+		PRINTERR("heap not enough\n");
 		return NULL;
 	}
 	chunk_header *ret = heap_brk;
@@ -114,7 +114,7 @@ static int search_bin(const chunk_size_t need)
 	if (bin[6]->size > 0) {
 		return 6;
 	} else {
-		printf("not any free chunk\n");
+		PRINTERR("not any free chunk\n");
 		return -1;
 	}
 }
@@ -197,7 +197,8 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 		case 6:
 			if (bin[6]->size > 0 &&
 			    need > ((chunk_header *)bin[6]->next)->chunk_size) {
-				printf("not enough bin: %d, %lld, need: %lld\n", bin[6]->size,
+				PRINTERR("not enough bin: ");
+				printf("%d, %lld, need: %lld\n", bin[6]->size,
 				       ((chunk_header *)bin[6]->next)->chunk_size, need);
 				return NULL;
 			} else {
@@ -245,7 +246,7 @@ static int check_valid_free(const void *mem)
 	void *cur = start_brk;
 	while ((intptr_t)(void*)cur < (intptr_t)(void*)r_mem) {
 		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk >= 65536) {
-			printf("%d: out of heap\n", __LINE__);
+			PRINTERR("out of heap\n");
 			break;
 		}
 		cur = (void *)((intptr_t)(void*)cur +

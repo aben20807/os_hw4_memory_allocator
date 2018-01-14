@@ -6,6 +6,14 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#define DEBUG
+#ifdef DEBUG
+#define PRINTERR(s)\
+    fprintf(stderr, "\033[0;32;31m""%d: %s""\033[m", __LINE__, s);
+#else
+#define PRINTERR(s);
+#endif
+
 typedef void *chunk_ptr_t;
 typedef long long chunk_size_t;
 typedef long long chunk_flag_t;
