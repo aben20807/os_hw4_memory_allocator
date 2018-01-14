@@ -6,6 +6,7 @@ int main()
 	printf("4:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(4));
 	printf("12:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(12));
 	printf("20:\t0x%08" PRIXPTR "\n", (uintptr_t)hw_malloc(20));
+	// watch_heap();
 	void *ptr = (void*)0x28;
 	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
 	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
@@ -15,9 +16,11 @@ int main()
 	ptr = (void*)0x90;
 	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
 	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
+	ptr = (void*)0x00100000;
+	printf("free:\t0x%08" PRIXPTR "\n", (uintptr_t)ptr);
+	printf("%s\n", hw_free(ptr) == 1 ? "success" : "fail");
 	// printf("%s\n", hw_free(NULL) == 1 ? "success" : "fail");
 	// printf("start_brk: %p\n", get_start_sbrk());
-	// watch_heap();
 	// char input[20];
 	// while (!feof(stdin)) {
 	//     if (fgets(input, 20, stdin) != NULL) {

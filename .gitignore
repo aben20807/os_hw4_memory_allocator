@@ -1,4 +1,5 @@
 *.o
 *.orig
 *.txt
+.gdb_history
 hw4_mm_test

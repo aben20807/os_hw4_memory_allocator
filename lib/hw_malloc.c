@@ -15,7 +15,7 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need);
 static int search_bin(const chunk_size_t need);
 static void en_bin(const int bin_num, chunk_header *c_h);
 static chunk_header *de_bin(const int index, const chunk_size_t need);
-static int check_valid_free(void *mem);
+static int check_valid_free(const void *mem);
 
 void *hw_malloc(size_t bytes)
 {
@@ -238,24 +238,33 @@ void watch_heap()
 	}
 }
 
-static int check_valid_free(void *mem)
+static int check_valid_free(const void *mem)
 {
-	mem = (void *)((intptr_t)(void*)mem +
-	               (intptr_t)(void*)start_brk);
+	void *r_mem = (void *)((intptr_t)(void*)mem +
+	                       (intptr_t)(void*)start_brk);
 	void *cur = start_brk;
-	while ((intptr_t)(void*)cur < (intptr_t)(void*)mem) {
-		// printf("0x%08" PRIXPTR "\n", (uintptr_t)cur);
-		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk > 65536) {
+	while ((intptr_t)(void*)cur < (intptr_t)(void*)r_mem) {
+		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk >= 65536) {
+			printf("%d: out of heap\n", __LINE__);
 			break;
 		}
 		cur = (void *)((intptr_t)(void*)cur +
 		               (intptr_t)(void*)sizeof(chunk_header));
-		if (cur == mem) {
-			return 1;
+		if (cur == r_mem) {
+			// TODO if free the top one
+			void *nxt;
+			nxt = (void *)((intptr_t)(void*)cur -
+			               (intptr_t)(void*)sizeof(chunk_header));
+			nxt = (void *)((intptr_t)(void*)nxt +
+			               (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
+			if (((chunk_header *)nxt)->prev_free_flag == 0) {
+				return 1;
+			} else {
+				return 0;
+			}
 		}
 		cur = (void *)((intptr_t)(void*)cur -
 		               (intptr_t)(void*)sizeof(chunk_header));
-		// printf("%lld\n", ((chunk_header *)cur)->chunk_size);
 		cur = (void *)((intptr_t)(void*)cur +
 		               (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
 	}
