@@ -149,7 +149,8 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 		new->prev_free_flag = 0;
 		*ori = new;
 		chunk_header *ret = create_chunk(need);
-		en_bin(6, (*ori));
+		// en_bin(6, (*ori));
+		en_bin(search_enbin((*ori)->chunk_size), (*ori));
 		slice_num++;
 		return ret;
 	} else {
@@ -327,6 +328,10 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 				cur = bin[6]->prev;
 				while (cur != (void *)bin[6]) {
 					if (need <= cur->chunk_size) {
+						if (((chunk_header *)cur->prev)->chunk_size == cur->chunk_size) {
+							cur = cur->prev;
+							continue;
+						}
 						ret = cur;
 						//TODO check if cur->prev or next is bin
 						((chunk_header *)cur->prev)->next = cur->next;
@@ -383,7 +388,7 @@ static int check_valid_free(const void *a_mem)
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
-				printf("here\n");
+				// printf("here\n");
 				return 0;
 			}
 		}
