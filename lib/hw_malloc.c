@@ -11,7 +11,7 @@ bin_t *bin[7];
 int slice_num = 1;
 chunk_header *top[2];
 /*Static function*/
-static chunk_header *create_chunk(const chunk_size_t size);
+static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
 static chunk_header *merge(chunk_header *h);
 static int search_debin(const chunk_size_t need);
@@ -45,7 +45,7 @@ void *hw_malloc(size_t bytes)
 		top[1]->prev_chunk_size = 40;
 		top[1]->prev_free_flag = 0;
 		heap_brk = start_brk;
-		chunk_header *s = create_chunk(64 * 1024);
+		chunk_header *s = create_chunk(start_brk, 64 * 1024);
 		heap_brk = start_brk; // reset heap top pointer
 		chunk_header *c = split(&s, need);
 		return (void *)((intptr_t)(void*)c +
@@ -115,6 +115,9 @@ void show_bin(const int i)
 	}
 	// printf("bin size: %d\n", bin[i]->size);
 	chunk_header *cur = bin[i]->next;
+	if (bin[i]->size == 0 || cur == NULL) {
+		return;
+	}
 	while ((void *)cur != (void *)bin[i]) {
 		void *r_cur = (void *)((intptr_t)(void*)cur -
 		                       (intptr_t)(void*)start_brk);
@@ -123,14 +126,20 @@ void show_bin(const int i)
 	}
 }
 
-static chunk_header *create_chunk(const chunk_size_t need)
+static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 {
-	if (heap_brk - start_brk + need > 64 * 1024) {
+	// if (heap_brk - start_brk + need > 64 * 1024 + 40) {
+	if ((void *)ori - start_brk + need > 64 * 1024 + 40) {
+		// printf("-+-%lld\n", need);
 		PRINTERR("heap not enough\n");
 		return NULL;
 	}
-	chunk_header *ret = heap_brk;
-	heap_brk += need;
+	// chunk_header *ret = heap_brk;
+	chunk_header *ret = ori;
+	if (ori == heap_brk) {
+		// printf("y\n");
+		heap_brk += need;
+	}
 	ret->chunk_size = need;
 	ret->prev = NULL;
 	ret->next = NULL;
@@ -140,16 +149,17 @@ static chunk_header *create_chunk(const chunk_size_t need)
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
 	if ((*ori)->chunk_size - need >= 48) {
-		if ((*ori)->chunk_size == top[0]->prev_chunk_size) {
+		if ((*ori)->chunk_size == top[0]->prev_chunk_size) { // TODO not good
 			top[0]->prev_chunk_size -= need;
 		}
+		void *base = *ori;
 		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
 		new->chunk_size = (*ori)->chunk_size - need;
 		new->prev_chunk_size = need;
 		new->prev_free_flag = 0;
 		*ori = new;
-		chunk_header *ret = create_chunk(need);
-		// en_bin(6, (*ori));
+		// printf("%p, %p\n", base, heap_brk);
+		chunk_header *ret = create_chunk((heap_brk), need);
 		en_bin(search_enbin((*ori)->chunk_size), (*ori));
 		slice_num++;
 		return ret;
@@ -354,7 +364,7 @@ void watch_heap()
 	chunk_header *cur = start_brk;
 	int count = 0;
 	printf("slice: %d\n", slice_num);
-	while (count++ < slice_num) {
+	while (count++ < slice_num + 1) {
 		printf("----------\n");
 		printf("0x%08" PRIxPTR "(",
 		       (uintptr_t)(void *)((intptr_t)(void*)cur - (intptr_t)(void*)start_brk));
@@ -369,21 +379,17 @@ void watch_heap()
 
 static int check_valid_free(const void *a_mem)
 {
-	void *cur = start_brk;
-	while ((intptr_t)(void*)cur < (intptr_t)(void*)a_mem) {
-		if ((intptr_t)(void*)cur - (intptr_t)(void*)start_brk >= 65536) {
-			PRINTERR("out of heap\n");
-			break;
+	chunk_header *cur = start_brk;
+	int count = 0;
+	while (count++ < slice_num + 1) {
+		if ((intptr_t)(void*)cur > (intptr_t)(void*)a_mem - 40) {
+			return 0;
 		}
-		cur = (void *)((intptr_t)(void*)cur +
-		               (intptr_t)(void*)sizeof(chunk_header));
-		if (cur == a_mem) {
+		if (cur == a_mem - 40) {
 			// TODO check if free the top one
 			void *nxt;
-			nxt = (void *)((intptr_t)(void*)cur -
-			               (intptr_t)(void*)sizeof(chunk_header));
-			nxt = (void *)((intptr_t)(void*)nxt +
-			               (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
+			nxt = (void *)((intptr_t)(void*)cur +
+			               (intptr_t)(void*)cur->chunk_size);
 			if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk <= 65536 &&
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
@@ -392,10 +398,52 @@ static int check_valid_free(const void *a_mem)
 				return 0;
 			}
 		}
-		cur = (void *)((intptr_t)(void*)cur -
-		               (intptr_t)(void*)sizeof(chunk_header));
-		cur = (void *)((intptr_t)(void*)cur +
-		               (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
+		cur = (void *)((intptr_t)(void*)cur + (intptr_t)(void*)cur->chunk_size);
 	}
 	return 0;
+	/*
+	void *cur = start_brk;
+	// int total = 0;
+	// while ((intptr_t)(void*)cur < (intptr_t)(void*)top[0]) {
+	//     total += ((chunk_header *)cur)->chunk_size;
+	//     cur = (void *)((intptr_t)(void*)cur -
+	//                    (intptr_t)(void*)sizeof(chunk_header));
+	//     cur = (void *)((intptr_t)(void*)cur +
+	//                    (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
+	// }
+	// printf("total: %d\n", total);
+	watch_heap();
+	exit(1);
+	cur = start_brk;
+	while ((intptr_t)(void*)cur < (intptr_t)(void*)a_mem) {
+	    if ((intptr_t)(void*)cur >= (intptr_t)(void*)heap_brk) {
+	        PRINTERR("out of heap\n");
+	        break;
+	    }
+	    cur = (void *)((intptr_t)(void*)cur +
+	                   (intptr_t)(void*)sizeof(chunk_header));
+	    if (cur == a_mem) {
+	        // TODO check if free the top one
+	        void *nxt;
+	        nxt = (void *)((intptr_t)(void*)cur -
+	                       (intptr_t)(void*)sizeof(chunk_header));
+	        nxt = (void *)((intptr_t)(void*)nxt +
+	                       (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
+	        if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk <= 65536 &&
+	            ((chunk_header *)nxt)->prev_free_flag == 0) {
+	            return 1;
+	        } else {
+	            // printf("here\n");
+	            return 0;
+	        }
+	    }
+	    cur = (void *)((intptr_t)(void*)cur -
+	                   (intptr_t)(void*)sizeof(chunk_header));
+	    cur = (void *)((intptr_t)(void*)cur +
+	                   (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
+	    if (((chunk_header *)cur)->chunk_size == 0){
+	        // return 0;
+	    }
+	}
+	return 0;*/
 }
