@@ -394,56 +394,10 @@ static int check_valid_free(const void *a_mem)
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
-				// printf("here\n");
 				return 0;
 			}
 		}
 		cur = (void *)((intptr_t)(void*)cur + (intptr_t)(void*)cur->chunk_size);
 	}
 	return 0;
-	/*
-	void *cur = start_brk;
-	// int total = 0;
-	// while ((intptr_t)(void*)cur < (intptr_t)(void*)top[0]) {
-	//     total += ((chunk_header *)cur)->chunk_size;
-	//     cur = (void *)((intptr_t)(void*)cur -
-	//                    (intptr_t)(void*)sizeof(chunk_header));
-	//     cur = (void *)((intptr_t)(void*)cur +
-	//                    (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
-	// }
-	// printf("total: %d\n", total);
-	watch_heap();
-	exit(1);
-	cur = start_brk;
-	while ((intptr_t)(void*)cur < (intptr_t)(void*)a_mem) {
-	    if ((intptr_t)(void*)cur >= (intptr_t)(void*)heap_brk) {
-	        PRINTERR("out of heap\n");
-	        break;
-	    }
-	    cur = (void *)((intptr_t)(void*)cur +
-	                   (intptr_t)(void*)sizeof(chunk_header));
-	    if (cur == a_mem) {
-	        // TODO check if free the top one
-	        void *nxt;
-	        nxt = (void *)((intptr_t)(void*)cur -
-	                       (intptr_t)(void*)sizeof(chunk_header));
-	        nxt = (void *)((intptr_t)(void*)nxt +
-	                       (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
-	        if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk <= 65536 &&
-	            ((chunk_header *)nxt)->prev_free_flag == 0) {
-	            return 1;
-	        } else {
-	            // printf("here\n");
-	            return 0;
-	        }
-	    }
-	    cur = (void *)((intptr_t)(void*)cur -
-	                   (intptr_t)(void*)sizeof(chunk_header));
-	    cur = (void *)((intptr_t)(void*)cur +
-	                   (intptr_t)(void*)((chunk_header *)cur)->chunk_size);
-	    if (((chunk_header *)cur)->chunk_size == 0){
-	        // return 0;
-	    }
-	}
-	return 0;*/
 }
