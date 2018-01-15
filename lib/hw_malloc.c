@@ -149,7 +149,7 @@ static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
 	if ((*ori)->chunk_size - need >= 48) {
-		if ((*ori)->chunk_size == top[0]->prev_chunk_size) { // TODO not good
+		if ((*ori) == top[0] - top[0]->prev_chunk_size) {
 			top[0]->prev_chunk_size -= need;
 		}
 		void *base = *ori;
@@ -209,6 +209,8 @@ static chunk_header *merge(chunk_header *h)
 		h->next = NULL;
 		return pre;
 	} else {
+		h->prev = NULL;
+		h->next = NULL;
 		return h;
 	}
 }
@@ -343,9 +345,16 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 							continue;
 						}
 						ret = cur;
-						//TODO check if cur->prev or next is bin
-						((chunk_header *)cur->prev)->next = cur->next;
-						((chunk_header *)cur->next)->prev = cur->prev;
+						if (cur->prev == bin[6]) {
+							((bin_t *)cur->prev)->next = cur->next;
+						} else {
+							((chunk_header *)cur->prev)->next = cur->next;
+						}
+						if (cur->next == bin[6]) {
+							((bin_t *)cur->next)->prev = cur->prev;
+						} else {
+							((chunk_header *)cur->next)->prev = cur->prev;
+						}
 						ret->prev = NULL;
 						ret->next = NULL;
 						bin[index]->size--;
@@ -355,6 +364,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 				}
 			}
 		}
+		PRINTERR("de bin error\n");
 		return NULL; //TODO should not reach here
 	}
 }
