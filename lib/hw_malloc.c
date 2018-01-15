@@ -103,6 +103,11 @@ int hw_free(void *mem)
 		}
 		// printf("%d\n", search_enbin(h->chunk_size));
 		chunk_header *m = merge(h);
+		nxt = (chunk_header *)((intptr_t)(void*)m +
+		                       (intptr_t)(void*)((chunk_header *)m)->chunk_size);
+		if (nxt == top[0]) {
+			heap_brk = start_brk + 1024 * 64 - m->chunk_size;
+		}
 		en_bin(search_enbin(m->chunk_size), m);
 		return 1;
 	}
@@ -159,14 +164,17 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 		slice_num++;
 		return ret;
 	} else {
-		heap_brk += need;
+		heap_brk += (*ori)->chunk_size;
+		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)(*ori) +
+		                                     (intptr_t)(void*)((chunk_header *)(*ori))->chunk_size);
+		nxt->prev_free_flag = 0;
 		return (*ori);
 	}
 }
 
 static chunk_header *merge(chunk_header *h)
 {
-	chunk_size_t ori_size = h->chunk_size;
+	// chunk_size_t ori_size = h->chunk_size;
 	chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
 	                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
 	chunk_header *nnxt = (chunk_header *)((intptr_t)(void*)nxt +
@@ -177,8 +185,10 @@ static chunk_header *merge(chunk_header *h)
 	// }
 	if (nnxt->prev_free_flag == 1) {
 		nnxt->prev_chunk_size += h->chunk_size;
-		((chunk_header *)nxt->prev)->next = nxt->next;
-		((chunk_header *)nxt->next)->prev = nxt->prev;
+		if ((chunk_header *)nxt->prev != NULL && (chunk_header *)nxt->next != NULL) {
+			((chunk_header *)nxt->prev)->next = nxt->next;
+			((chunk_header *)nxt->next)->prev = nxt->prev;
+		}
 		bin[search_enbin(nxt->chunk_size)]->size--;
 		h->chunk_size += nxt->chunk_size;
 		nxt->chunk_size = 0;
@@ -191,15 +201,17 @@ static chunk_header *merge(chunk_header *h)
 		chunk_header *pre = (chunk_header *)((intptr_t)(void*)h -
 		                                     (intptr_t)(void*)((chunk_header *)h)->prev_chunk_size);
 		nxt->prev_chunk_size += pre->chunk_size;
-		if (nxt == top[0]) {
-			// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
-			// heap_brk -= (pre->chunk_size);
-			heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
-			                        pre->chunk_size));
-			// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
+		// if (nxt == top[0]) {
+		// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
+		// heap_brk -= (pre->chunk_size);
+		// heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
+		// pre->chunk_size));
+		// printf("%p, %p 2-+- %lld\n", start_brk, heap_brk, pre->chunk_size);
+		// }
+		if ((chunk_header *)pre->prev != NULL && (chunk_header *)pre->next != NULL) {
+			((chunk_header *)pre->prev)->next = pre->next;
+			((chunk_header *)pre->next)->prev = pre->prev;
 		}
-		((chunk_header *)pre->prev)->next = pre->next;
-		((chunk_header *)pre->next)->prev = pre->prev;
 		bin[search_enbin(pre->chunk_size)]->size--;
 		pre->chunk_size += h->chunk_size;
 		h->chunk_size = 0;
@@ -209,15 +221,15 @@ static chunk_header *merge(chunk_header *h)
 		h->next = NULL;
 		return pre;
 	} else {
-		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
-		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
-		if (nxt == top[0]) {
-			// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
-			// heap_brk -= (nxt->prev_chunk_size - (void *)0x27);
-			heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
-			                        nxt->prev_chunk_size));
-			// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
-		}
+		// chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
+		// (intptr_t)(void*)((chunk_header *)h)->chunk_size);
+		// if (nxt == top[0]) {
+		// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
+		// heap_brk -= (nxt->prev_chunk_size - (void *)0x27);
+		// heap_brk = (void *)((intptr_t)(void *)heap_brk - (intptr_t)(void *)(
+		// nxt->prev_chunk_size));
+		// printf("%p, %p 3-+- %lld\n", start_brk, heap_brk, nxt->prev_chunk_size);
+		// }
 		return h;
 	}
 }
@@ -407,6 +419,7 @@ static int check_valid_free(const void *a_mem)
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
+				printf("here\n");
 				return 0;
 			}
 		}
