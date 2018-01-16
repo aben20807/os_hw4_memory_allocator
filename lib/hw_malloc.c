@@ -45,11 +45,11 @@ void *hw_malloc(size_t bytes)
 		top[1]->chunk_size = 40;
 		top[1]->prev_chunk_size = 40;
 		top[1]->prev_free_flag = 0;
-		chunk_header *s = create_chunk(start_brk, 64 * 1024);
+		chunk_header *s = create_chunk(get_start_brk(), 64 * 1024);
 		chunk_header *c = split(&s, need);
 		return (void *)((intptr_t)(void*)c +
 		                sizeof(chunk_header) -
-		                (intptr_t)(void*)start_brk);
+		                (intptr_t)(void*)get_start_brk());
 	} else {
 		chunk_header *r = NULL;
 		int bin_num = search_debin(need);
@@ -58,7 +58,7 @@ void *hw_malloc(size_t bytes)
 			r = de_bin(bin_num, need);
 			return (void *)((intptr_t)(void*)r +
 			                sizeof(chunk_header) -
-			                (intptr_t)(void*)start_brk);
+			                (intptr_t)(void*)get_start_brk());
 		} else { // bin_num = 6
 			chunk_header *s = de_bin(6, need);
 			if (s == NULL) {
@@ -72,7 +72,7 @@ void *hw_malloc(size_t bytes)
 			}
 			return (void *)((intptr_t)(void*)c +
 			                sizeof(chunk_header) -
-			                (intptr_t)(void*)start_brk);
+			                (intptr_t)(void*)get_start_brk());
 		}
 	}
 	return NULL;
@@ -81,7 +81,7 @@ void *hw_malloc(size_t bytes)
 int hw_free(void *mem)
 {
 	void *a_mem = (void *)((intptr_t)(void*)mem +
-	                       (intptr_t)(void*)start_brk);
+	                       (intptr_t)(void*)get_start_brk());
 	if (!has_init || !check_valid_free(a_mem)) {
 		return 0;
 	} else {
@@ -99,7 +99,7 @@ int hw_free(void *mem)
 	}
 }
 
-void *get_start_sbrk(void)
+void *get_start_brk(void)
 {
 	return (void *)start_brk;
 }
@@ -116,7 +116,7 @@ void show_bin(const int i)
 	}
 	while ((void *)cur != (void *)bin[i]) {
 		void *r_cur = (void *)((intptr_t)(void*)cur -
-		                       (intptr_t)(void*)start_brk);
+		                       (intptr_t)(void*)get_start_brk());
 		printf("0x%08" PRIxPTR "--------%lld\n", (uintptr_t)r_cur, cur->chunk_size);
 		cur = cur->next;
 	}
@@ -124,7 +124,7 @@ void show_bin(const int i)
 
 static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 {
-	if ((void *)ori - start_brk + need > 64 * 1024 + 40) {
+	if ((void *)ori - get_start_brk() + need > 64 * 1024 + 40) {
 		PRINTERR("heap not enough\n");
 		return NULL;
 	}
@@ -362,13 +362,13 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 
 void watch_heap()
 {
-	chunk_header *cur = start_brk;
+	chunk_header *cur = get_start_brk();
 	int count = 0;
 	printf("slice: %d\n", slice_num);
 	while (count++ < slice_num + 1) {
 		printf("----------\n");
 		printf("0x%08" PRIxPTR "(",
-		       (uintptr_t)(void *)((intptr_t)(void*)cur - (intptr_t)(void*)start_brk));
+		       (uintptr_t)(void *)((intptr_t)(void*)cur - (intptr_t)(void*)get_start_brk()));
 		printf("0x%08" PRIxPTR ")\n",
 		       (uintptr_t)(void *)cur);
 		printf("chun_size:%lld\n", cur->chunk_size);
@@ -380,7 +380,7 @@ void watch_heap()
 
 static int check_valid_free(const void *a_mem)
 {
-	chunk_header *cur = start_brk;
+	chunk_header *cur = get_start_brk();
 	int count = 0;
 	while (count++ < slice_num + 1) {
 		if ((intptr_t)(void*)cur > (intptr_t)(void*)a_mem - 40) {
@@ -391,7 +391,7 @@ static int check_valid_free(const void *a_mem)
 			void *nxt;
 			nxt = (void *)((intptr_t)(void*)cur +
 			               (intptr_t)(void*)cur->chunk_size);
-			if ((intptr_t)(void*)nxt - (intptr_t)(void*)start_brk <= 65536 &&
+			if ((intptr_t)(void*)nxt - (intptr_t)(void*)get_start_brk() <= 65536 &&
 			    ((chunk_header *)nxt)->prev_free_flag == 0) {
 				return 1;
 			} else {
