@@ -149,17 +149,22 @@ static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
 	if ((*ori)->chunk_size - need >= 48) {
+		void *base = *ori;
 		if ((*ori) == top[0] - top[0]->prev_chunk_size) {
 			top[0]->prev_chunk_size -= need;
+		} else {
+			chunk_header *nxt = (chunk_header *)((intptr_t)(void*)base +
+			                                     (intptr_t)(void*)((chunk_header *)base)->chunk_size);
+			nxt->prev_chunk_size -= need;
 		}
-		void *base = *ori;
+		// void *base = *ori;
 		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
 		new->chunk_size = (*ori)->chunk_size - need;
 		new->prev_chunk_size = need;
 		new->prev_free_flag = 0;
 		*ori = new;
 		// printf("%p, %p\n", base, heap_brk);
-		chunk_header *ret = create_chunk((heap_brk), need);
+		chunk_header *ret = create_chunk((base), need);
 		en_bin(search_enbin((*ori)->chunk_size), (*ori));
 		slice_num++;
 		return ret;
