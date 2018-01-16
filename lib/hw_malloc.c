@@ -5,7 +5,6 @@
 /*Global Variable*/
 bool has_init = false;
 void *start_brk = NULL;
-void *heap_brk = NULL;
 bin_t s_bin[7] = {};
 bin_t *bin[7];
 int slice_num = 1;
@@ -22,6 +21,7 @@ static int check_valid_free(const void *mem);
 
 void *hw_malloc(size_t bytes)
 {
+	/*Make need = bytes + 40 and be multiple of 8 bytes*/
 	long long need = bytes + 40LL + (bytes % 8 != 0 ? (8 - (bytes % 8)) : 0);
 	if (!has_init) {
 		has_init = true;
@@ -32,6 +32,7 @@ void *hw_malloc(size_t bytes)
 			bin[i]->size = 0;
 		}
 		start_brk = sbrk(64 * 1024);
+		/*Create two chunk_header on start_brk + 64 * 1024*/
 		top[0] = sbrk(40);
 		top[1] = sbrk(40);
 		top[0]->prev = NULL;
@@ -44,9 +45,7 @@ void *hw_malloc(size_t bytes)
 		top[1]->chunk_size = 40;
 		top[1]->prev_chunk_size = 40;
 		top[1]->prev_free_flag = 0;
-		heap_brk = start_brk;
 		chunk_header *s = create_chunk(start_brk, 64 * 1024);
-		heap_brk = start_brk; // reset heap top pointer
 		chunk_header *c = split(&s, need);
 		return (void *)((intptr_t)(void*)c +
 		                sizeof(chunk_header) -
@@ -95,9 +94,6 @@ int hw_free(void *mem)
 		chunk_header *m = merge(h);
 		nxt = (chunk_header *)((intptr_t)(void*)m +
 		                       (intptr_t)(void*)((chunk_header *)m)->chunk_size);
-		if (nxt == top[0]) {
-			heap_brk = start_brk + 1024 * 64 - m->chunk_size;
-		}
 		en_bin(search_enbin(m->chunk_size), m);
 		return 1;
 	}
@@ -133,9 +129,6 @@ static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 		return NULL;
 	}
 	chunk_header *ret = ori;
-	if (ori == heap_brk) {
-		heap_brk += need;
-	}
 	ret->chunk_size = need;
 	ret->prev = NULL;
 	ret->next = NULL;
@@ -163,7 +156,6 @@ static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 		slice_num++;
 		return ret;
 	} else {
-		heap_brk += (*ori)->chunk_size;
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)(*ori) +
 		                                     (intptr_t)(void*)((chunk_header *)(*ori))->chunk_size);
 		nxt->prev_free_flag = 0;
