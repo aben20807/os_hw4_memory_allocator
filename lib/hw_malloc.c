@@ -7,22 +7,24 @@ bool has_init = false;
 void *start_brk = NULL;
 bin_t s_bin[7] = {};
 bin_t *bin[7];
-int slice_num = 1;
+int slice_num = 1; // count the number of chunk
 chunk_header *top[2];
+
 /*Static function*/
-static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need);
+static chunk_header *create_chunk(chunk_header *base, const chunk_size_t need);
 static chunk_header *split(chunk_header **ori, const chunk_size_t need);
 static chunk_header *merge(chunk_header *h);
 static int search_debin(const chunk_size_t need);
 static int search_enbin(const chunk_size_t need);
 static void en_bin(const int index, chunk_header *c_h);
 static chunk_header *de_bin(const int index, const chunk_size_t need);
+static void rm_chunk_from_bin(chunk_header *c);
 static int check_valid_free(const void *mem);
 
 void *hw_malloc(size_t bytes)
 {
 	/*Make need = bytes + 40 and be multiple of 8 bytes*/
-	long long need = bytes + 40LL + (bytes % 8 != 0 ? (8 - (bytes % 8)) : 0);
+	chunk_size_t need = bytes + 40LL + (bytes % 8 != 0 ? (8 - (bytes % 8)) : 0);
 	if (!has_init) {
 		has_init = true;
 		for (int i = 0; i < 7; i++) {
@@ -54,6 +56,7 @@ void *hw_malloc(size_t bytes)
 		chunk_header *r = NULL;
 		int bin_num = search_debin(need);
 		if (bin_num == -1) {
+			PRINTERR("search debin error\n");
 		} else if (bin_num <= 5) {
 			r = de_bin(bin_num, need);
 			return (void *)((intptr_t)(void*)r +
@@ -63,7 +66,7 @@ void *hw_malloc(size_t bytes)
 			chunk_header *s = de_bin(6, need);
 			if (s == NULL) {
 				PRINTERR("bin[6] NULL\n");
-				return NULL; // XXX
+				return NULL;
 			}
 			chunk_header *c = split(&s, need);
 			if (c == NULL) {
@@ -85,15 +88,12 @@ int hw_free(void *mem)
 	if (!has_init || !check_valid_free(a_mem)) {
 		return 0;
 	} else {
-		// TODO if free the top one
 		chunk_header *h = (chunk_header *)((intptr_t)(void*)a_mem -
 		                                   (intptr_t)(void*)sizeof(chunk_header));
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
 		                                     (intptr_t)(void*)((chunk_header *)h)->chunk_size);
 		nxt->prev_free_flag = 1;
 		chunk_header *m = merge(h);
-		nxt = (chunk_header *)((intptr_t)(void*)m +
-		                       (intptr_t)(void*)((chunk_header *)m)->chunk_size);
 		en_bin(search_enbin(m->chunk_size), m);
 		return 1;
 	}
@@ -111,9 +111,6 @@ void show_bin(const int i)
 	}
 	// printf("bin size: %d\n", bin[i]->size);
 	chunk_header *cur = bin[i]->next;
-	if (bin[i]->size == 0 || cur == NULL) {
-		return;
-	}
 	while ((void *)cur != (void *)bin[i]) {
 		void *r_cur = (void *)((intptr_t)(void*)cur -
 		                       (intptr_t)(void*)get_start_brk());
@@ -122,13 +119,13 @@ void show_bin(const int i)
 	}
 }
 
-static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
+static chunk_header *create_chunk(chunk_header *base, const chunk_size_t need)
 {
-	if ((void *)ori - get_start_brk() + need > 64 * 1024 + 40) {
+	if ((void *)base - get_start_brk() + need > 64 * 1024) {
 		PRINTERR("heap not enough\n");
 		return NULL;
 	}
-	chunk_header *ret = ori;
+	chunk_header *ret = base;
 	ret->chunk_size = need;
 	ret->prev = NULL;
 	ret->next = NULL;
@@ -138,24 +135,24 @@ static chunk_header *create_chunk(chunk_header *ori, const chunk_size_t need)
 static chunk_header *split(chunk_header **ori, const chunk_size_t need)
 {
 	if ((*ori)->chunk_size - need >= 48) {
-		void *base = *ori;
-		if ((*ori) == top[0] - top[0]->prev_chunk_size) {
-			top[0]->prev_chunk_size -= need;
-		} else {
-			chunk_header *nxt = (chunk_header *)((intptr_t)(void*)base +
-			                                     (intptr_t)(void*)((chunk_header *)base)->chunk_size);
-			nxt->prev_chunk_size -= need;
-		}
-		chunk_header *new = (void *)((intptr_t)(void*)*ori + need);
-		new->chunk_size = (*ori)->chunk_size - need;
+		chunk_header *base = *ori;
+		/*Change next chunk's prev_chunk_size*/
+		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)base +
+		                                     (intptr_t)(void*)((chunk_header *)base)->chunk_size);
+		nxt->prev_chunk_size -= need;
+		/*Create upper chunk by shifting need*/
+		chunk_header *new = (void *)((intptr_t)(void*)base + need);
+		new->chunk_size = (base)->chunk_size - need;
 		new->prev_chunk_size = need;
 		new->prev_free_flag = 0;
 		*ori = new;
-		chunk_header *ret = create_chunk((base), need);
+		chunk_header *ret = create_chunk(base, need);
+		/*Insert upper chunk into bin*/
 		en_bin(search_enbin((*ori)->chunk_size), (*ori));
 		slice_num++;
 		return ret;
 	} else {
+		/*If chunk size is not enough to split, return whole chunk*/
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)(*ori) +
 		                                     (intptr_t)(void*)((chunk_header *)(*ori))->chunk_size);
 		nxt->prev_free_flag = 0;
@@ -170,16 +167,12 @@ static chunk_header *merge(chunk_header *h)
 	chunk_header *nnxt = (chunk_header *)((intptr_t)(void*)nxt +
 	                                      (intptr_t)(void*)((chunk_header *)nxt)->chunk_size);
 	if (nnxt->prev_free_flag == 1) {
+		/*If next chunk is free, being able to merge*/
 		nnxt->prev_chunk_size += h->chunk_size;
-		if ((chunk_header *)nxt->prev != NULL && (chunk_header *)nxt->next != NULL) {
-			((chunk_header *)nxt->prev)->next = nxt->next;
-			((chunk_header *)nxt->next)->prev = nxt->prev;
-		}
+		rm_chunk_from_bin(nxt);
 		bin[search_enbin(nxt->chunk_size)]->size--;
 		h->chunk_size += nxt->chunk_size;
 		nxt->chunk_size = 0;
-		nxt->prev = NULL;
-		nxt->next = NULL;
 	}
 	if (h->prev_free_flag == 1) {
 		chunk_header *nxt = (chunk_header *)((intptr_t)(void*)h +
@@ -187,15 +180,10 @@ static chunk_header *merge(chunk_header *h)
 		chunk_header *pre = (chunk_header *)((intptr_t)(void*)h -
 		                                     (intptr_t)(void*)((chunk_header *)h)->prev_chunk_size);
 		nxt->prev_chunk_size += pre->chunk_size;
-		if ((chunk_header *)pre->prev != NULL && (chunk_header *)pre->next != NULL) {
-			((chunk_header *)pre->prev)->next = pre->next;
-			((chunk_header *)pre->next)->prev = pre->prev;
-		}
+		rm_chunk_from_bin(pre);
 		bin[search_enbin(pre->chunk_size)]->size--;
 		pre->chunk_size += h->chunk_size;
 		h->chunk_size = 0;
-		pre->prev = NULL;
-		pre->next = NULL;
 		h->prev = NULL;
 		h->next = NULL;
 		return pre;
@@ -228,17 +216,12 @@ static int search_enbin(const chunk_size_t size)
 {
 	switch (size) {
 	case 48:
-		return 0;
 	case 56:
-		return 1;
 	case 64:
-		return 2;
 	case 72:
-		return 3;
 	case 80:
-		return 4;
 	case 88:
-		return 5;
+		return ((size - 40) / 8) - 1;
 	default:
 		return 6;
 	}
@@ -311,15 +294,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 		case 4:
 		case 5:
 			ret = bin[index]->next;
-			if (bin[index]->size == 1) {
-				bin[index]->next = bin[index];
-				bin[index]->prev = bin[index];
-			} else {
-				bin[index]->next = ret->next;
-				((chunk_header *)ret->next)->prev = bin[index];
-			}
-			ret->prev = NULL;
-			ret->next = NULL;
+			rm_chunk_from_bin(ret);
 			bin[index]->size--;
 			return ret;
 		case 6:
@@ -336,18 +311,7 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 							continue;
 						}
 						ret = cur;
-						if (cur->prev == bin[6]) {
-							((bin_t *)cur->prev)->next = cur->next;
-						} else {
-							((chunk_header *)cur->prev)->next = cur->next;
-						}
-						if (cur->next == bin[6]) {
-							((bin_t *)cur->next)->prev = cur->prev;
-						} else {
-							((chunk_header *)cur->next)->prev = cur->prev;
-						}
-						ret->prev = NULL;
-						ret->next = NULL;
+						rm_chunk_from_bin(cur);
 						bin[index]->size--;
 						return ret;
 					}
@@ -356,8 +320,33 @@ static chunk_header *de_bin(const int index, const chunk_size_t need)
 			}
 		}
 		PRINTERR("de bin error\n");
-		return NULL; //TODO should not reach here
+		return NULL;
 	}
+}
+
+static void rm_chunk_from_bin(chunk_header *c)
+{
+	/*Used to reconnect linked list when removing a chunk*/
+	if (c->prev == bin[0] || c->prev == bin[1] ||
+	    c->prev == bin[2] || c->prev == bin[3] ||
+	    c->prev == bin[4] || c->prev == bin[5] ||
+	    c->prev == bin[6]
+	   ) {
+		((bin_t *)c->prev)->next = c->next;
+	} else {
+		((chunk_header *)c->prev)->next = c->next;
+	}
+	if (c->next == bin[0] || c->next == bin[1] ||
+	    c->next == bin[2] || c->next == bin[3] ||
+	    c->next == bin[4] || c->next == bin[5] ||
+	    c->next == bin[6]
+	   ) {
+		((bin_t *)c->next)->prev = c->prev;
+	} else {
+		((chunk_header *)c->next)->prev = c->prev;
+	}
+	c->prev = NULL;
+	c->next = NULL;
 }
 
 void watch_heap()
@@ -387,7 +376,6 @@ static int check_valid_free(const void *a_mem)
 			return 0;
 		}
 		if (cur == a_mem - 40) {
-			// TODO check if free the top one
 			void *nxt;
 			nxt = (void *)((intptr_t)(void*)cur +
 			               (intptr_t)(void*)cur->chunk_size);
