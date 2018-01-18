@@ -12,7 +12,12 @@ int main()
 			    input[4] == 'c'
 			   ) {
 				size_t need = atoll(get_argv(input));
-				printf("0x%08" PRIxPTR "\n", (uintptr_t)hw_malloc(need));
+				void *ptr = hw_malloc(need);
+				if (ptr != NULL) {
+					printf("0x%08" PRIxPTR "\n", (uintptr_t)ptr);
+				} else {
+					printf("%p\n", ptr);
+				}
 			} else if (input[0] == 'f' &&
 			           input[1] == 'r' &&
 			           input[2] == 'e' &&
@@ -27,6 +32,10 @@ int main()
 			           input[4] == 't'
 			          ) {
 				int i = input[10] - '0';
+				if (i < 0 || i > 6) {
+					printf("COMMAND ERROR\n");
+					continue;
+				}
 				show_bin(i);
 			}
 		}
