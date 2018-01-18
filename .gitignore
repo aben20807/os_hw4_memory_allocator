@@ -3,3 +3,4 @@
 *.txt
 .gdb_history
 hw4_mm_test
+hw4_mm_pthread_test
