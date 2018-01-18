@@ -9,6 +9,7 @@ bin_t s_bin[7] = {};
 bin_t *bin[7];
 int slice_num = 1; // count the number of chunk
 chunk_header *top[2];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*Static function*/
 static chunk_header *create_chunk(chunk_header *base, const chunk_size_t need);
@@ -23,10 +24,17 @@ static int check_valid_free(const void *mem);
 
 void *hw_malloc(size_t bytes)
 {
+	pthread_mutex_lock(&mutex);
 	/*Make need = bytes + 40 and be multiple of 8 bytes*/
 	chunk_size_t need = bytes + 40LL + (bytes % 8 != 0 ? (8 - (bytes % 8)) : 0);
 	if (!has_init) {
 		has_init = true;
+		if (need > 64 * 1024) {
+			PRINTERR("not enough space\n");
+			has_init = false;
+			pthread_mutex_unlock(&mutex);
+			return NULL;
+		}
 		for (int i = 0; i < 7; i++) {
 			bin[i] = &s_bin[i];
 			bin[i]->prev = bin[i];
@@ -49,6 +57,7 @@ void *hw_malloc(size_t bytes)
 		top[1]->prev_free_flag = 0;
 		chunk_header *s = create_chunk(get_start_brk(), 64 * 1024);
 		chunk_header *c = split(&s, need);
+		pthread_mutex_unlock(&mutex);
 		return (void *)((intptr_t)(void*)c +
 		                sizeof(chunk_header) -
 		                (intptr_t)(void*)get_start_brk());
@@ -59,6 +68,7 @@ void *hw_malloc(size_t bytes)
 			PRINTERR("search debin error\n");
 		} else if (bin_num <= 5) {
 			r = de_bin(bin_num, need);
+			pthread_mutex_unlock(&mutex);
 			return (void *)((intptr_t)(void*)r +
 			                sizeof(chunk_header) -
 			                (intptr_t)(void*)get_start_brk());
@@ -66,26 +76,32 @@ void *hw_malloc(size_t bytes)
 			chunk_header *s = de_bin(6, need);
 			if (s == NULL) {
 				PRINTERR("bin[6] NULL\n");
+				pthread_mutex_unlock(&mutex);
 				return NULL;
 			}
 			chunk_header *c = split(&s, need);
 			if (c == NULL) {
 				PRINTERR("NULL after split\n");
+				pthread_mutex_unlock(&mutex);
 				return NULL;
 			}
+			pthread_mutex_unlock(&mutex);
 			return (void *)((intptr_t)(void*)c +
 			                sizeof(chunk_header) -
 			                (intptr_t)(void*)get_start_brk());
 		}
 	}
+	pthread_mutex_unlock(&mutex);
 	return NULL;
 }
 
 int hw_free(void *mem)
 {
+	pthread_mutex_lock(&mutex);
 	void *a_mem = (void *)((intptr_t)(void*)mem +
 	                       (intptr_t)(void*)get_start_brk());
 	if (!has_init || !check_valid_free(a_mem)) {
+		pthread_mutex_unlock(&mutex);
 		return 0;
 	} else {
 		chunk_header *h = (chunk_header *)((intptr_t)(void*)a_mem -
@@ -95,6 +111,7 @@ int hw_free(void *mem)
 		nxt->prev_free_flag = 1;
 		chunk_header *m = merge(h);
 		en_bin(search_enbin(m->chunk_size), m);
+		pthread_mutex_unlock(&mutex);
 		return 1;
 	}
 }

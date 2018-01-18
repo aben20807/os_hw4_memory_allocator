@@ -5,8 +5,9 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <pthread.h>
 
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
 #define PRINTERR(s)\
     fprintf(stderr, "\033[0;32;31m""%d: %s""\033[m", __LINE__, s);
